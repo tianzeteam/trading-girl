@@ -817,13 +817,19 @@ class WSManager:
                     capture_output=True, text=True, timeout=20,
                 )
                 if exec_result.returncode == 0:
-                    result = json.loads(exec_result.stdout)
-                    log.info(f"Auto trade OK: {result.get('order_id','')} @ {result.get('price','')}")
-                    return result
+                    try:
+                        result = json.loads(exec_result.stdout)
+                        log.info(f"Auto trade OK: {result.get('order_id','')} @ {result.get('price','')}")
+                        return result
+                    except (json.JSONDecodeError, TypeError):
+                        log.warning(f"Auto trade stdout parse failed: {exec_result.stdout[:200]}")
+                        return {"action": action, "symbol": sym, "size": sz, "reason": reason,
+                                "success": False, "error": "stdout parse failed"}
                 else:
-                    log.warning(f"Auto trade failed: {exec_result.stderr[:200]}")
+                    err_body = exec_result.stdout.strip() or exec_result.stderr.strip() or "unknown error (empty output)"
+                    log.warning(f"Auto trade failed: {err_body[:200]}")
                     return {"action": action, "symbol": sym, "size": sz, "reason": reason,
-                            "success": False, "error": exec_result.stderr[:200]}
+                            "success": False, "error": err_body[:200]}
             except Exception as e:
                 log.warning(f"Auto trade exception: {e}")
                 return None

@@ -158,5 +158,42 @@
     "balance_after": {
       "USDT": "9999.57690678"
     }
+  },
+  {
+    "action": "open_short",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "test",
+    "success": true,
+    "order_id": "1452682975778078721",
+    "price": "1808.65",
+    "error": "",
+    "ts": "2026-06-21T20:08:51Z",
+    "balance_before": {
+      "USDT": "10000.38515431"
+    },
+    "client_oid": "1452682975807438848",
+    "fee": "-0.0108519",
+    "balance_after": {
+      "USDT": "10000.37430241"
+    }
+  },
+  {
+    "action": "close_short",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "close test",
+    "success": true,
+    "order_id": "1452683018585145345",
+    "price": "",
+    "error": "",
+    "ts": "2026-06-21T20:09:01Z",
+    "balance_before": {
+      "USDT": "10000.37430241"
+    },
+    "client_oid": "1452683018597728256",
+    "balance_after": {
+      "USDT": "10000.37430241"
+    }
   }
 ]

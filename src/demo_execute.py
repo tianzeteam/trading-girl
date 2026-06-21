@@ -23,12 +23,12 @@ TRADE_LOG = "/home/block0/.hermes/profiles/jiaoyiyuan/trade-log.json"
 
 # 限仓
 MAX_POSITION = {"BTC": 0.01, "ETH": 0.1}
-DAILY_TRADE_LIMIT = 10
-
-SYMBOL_MAP = {"BTC": "BTCUSDT", "ETH": "ETHUSDT"}
-SIZE_MIN = {"BTC": 0.001, "ETH": 0.01}
+DAILY_TRADE_LIMIT = 20  # 只计成功交易
 
 # ── 如果环境变量没读到，从 .env 文件补充 ──
+SIZE_MIN = {"BTC": 0.001, "ETH": 0.01}
+SYMBOL_MAP = {"BTC": "BTCUSDT", "ETH": "ETHUSDT"}
+
 if not all([DEMO_API_KEY, DEMO_SECRET_KEY, DEMO_PASSPHRASE]):
     try:
         env_path = '/home/block0/.hermes/profiles/jiaoyiyuan/.env'
@@ -94,7 +94,7 @@ def check_daily_limit() -> tuple:
         else:
             log = []
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        today_trades = [t for t in log if t.get("ts", "").startswith(today)]
+        today_trades = [t for t in log if t.get("ts", "").startswith(today) and t.get("success")]
         if len(today_trades) >= DAILY_TRADE_LIMIT:
             return False, f"今日已达交易上限 {DAILY_TRADE_LIMIT} 笔"
         return True, ""
