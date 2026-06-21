@@ -1,0 +1,41 @@
+[
+  {
+    "action": "open_long",
+    "symbol": "BTC",
+    "size": "0.001",
+    "reason": "开仓测试",
+    "success": true,
+    "order_id": "1452431000138317825",
+    "price": "64399.9",
+    "error": "",
+    "ts": "2026-06-21T03:27:31Z",
+    "client_oid": "1452431000167677952",
+    "fee": "-0.03863994"
+  },
+  {
+    "action": "close_long",
+    "symbol": "BTC",
+    "size": "0.001",
+    "reason": "平仓测试",
+    "success": true,
+    "order_id": "1452431024477863937",
+    "price": "64395.5",
+    "error": "",
+    "ts": "2026-06-21T03:27:41Z",
+    "client_oid": "1452431024490446848",
+    "fee": "-0.0386373"
+  },
+  {
+    "action": "open_short",
+    "symbol": "ETH",
+    "size": "0.1",
+    "reason": "ETH 方向明确下行 + RSI三连降确认空头动量，资金费率为负说明空头不拥挤。BTC横盘不共振但也不构成支撑。轻仓试空，不扛单。",
+    "success": true,
+    "order_id": "1452500275129647105",
+    "price": "1808.65",
+    "error": "",
+    "ts": "2026-06-21T08:02:52Z",
+    "client_oid": "1452500275163201536",
+    "fee": "-0.108519"
+  }
+]
