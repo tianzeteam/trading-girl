@@ -133,8 +133,8 @@ Full architecture details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_USERNAME/trading-yuan.git
-cd trading-yuan
+git clone https://github.com/YOUR_USERNAME/trading-girl.git
+cd trading-girl
 
 # 1. Get Bitget Demo API Key
 #    Log in → Switch to Demo Mode → API Key Management → Create Demo API Key
@@ -165,7 +165,7 @@ python src/ws-monitor.py
 ## 📁 Project Structure
 
 ```
-trading-yuan/
+trading-girl/
 ├── README.md                 ← 项目说明（hackathon 提交用）
 ├── SOUL.md                   ← 交易媛人设（核心）
 ├── .env.example              ← 配置模板
