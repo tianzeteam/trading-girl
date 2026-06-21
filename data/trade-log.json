@@ -37,5 +37,79 @@
     "ts": "2026-06-21T08:02:52Z",
     "client_oid": "1452500275163201536",
     "fee": "-0.108519"
+  },
+  {
+    "action": "open_short",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "ETH RSI连续下行45.4 趋势空头",
+    "success": true,
+    "order_id": "1452554285341638657",
+    "price": "1809",
+    "error": "",
+    "ts": "2026-06-21T11:37:27Z",
+    "balance_before": {
+      "USDT": "9999.6371703"
+    },
+    "client_oid": "1452554285370998784",
+    "fee": "-0.010854",
+    "balance_after": {
+      "USDT": "9999.6263163"
+    }
+  },
+  {
+    "action": "open_long",
+    "symbol": "BTC",
+    "size": "0.001",
+    "reason": "BTC RSI 46 中性偏下 博弈反弹",
+    "success": true,
+    "order_id": "1452554305314914305",
+    "price": "64262.7",
+    "error": "",
+    "ts": "2026-06-21T11:37:33Z",
+    "balance_before": {
+      "USDT": "9999.6263163"
+    },
+    "client_oid": "1452554305344274432",
+    "fee": "-0.03855762",
+    "balance_after": {
+      "USDT": "9999.58775868"
+    }
+  },
+  {
+    "action": "close_short",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "ETH短线止盈 信号衰减",
+    "success": true,
+    "order_id": "1452554321253269505",
+    "price": "",
+    "error": "",
+    "ts": "2026-06-21T11:37:37Z",
+    "balance_before": {
+      "USDT": "9999.58775868"
+    },
+    "client_oid": "1452554321265852416",
+    "balance_after": {
+      "USDT": "9999.58775868"
+    }
+  },
+  {
+    "action": "open_long",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "ETH RSI超卖反弹 均值回归",
+    "success": true,
+    "order_id": "1452554339481714689",
+    "price": "",
+    "error": "",
+    "ts": "2026-06-21T11:37:41Z",
+    "balance_before": {
+      "USDT": "9999.58775868"
+    },
+    "client_oid": "1452554339506880512",
+    "balance_after": {
+      "USDT": "9999.58775868"
+    }
   }
 ]

@@ -760,6 +760,92 @@ class WSManager:
         self._persist_now()
         self._write_health(status="active", signals=len(new_signals))
 
+    def _auto_trade(self, signals: list, context: dict) -> dict | None:
+        """规则驱动自动交易——信号匹配就执行，不依赖 LLM"""
+        import subprocess, json, os
+        positions = {}
+        log_path = CONFIG.get("trade_log", os.path.join(os.path.dirname(CONFIG["signal_file"]), "trade-log.json"))
+        try:
+            if os.path.exists(log_path):
+                with open(log_path) as f:
+                    log_data = json.load(f)
+                for sym in ["BTC", "ETH"]:
+                    entries = [e for e in log_data if e.get("symbol") == sym and e.get("success")]
+                    if entries:
+                        last = entries[-1]
+                        act = last.get("action", "")
+                        if "open_long" in act:
+                            positions[sym] = "long"
+                        elif "open_short" in act:
+                            positions[sym] = "short"
+                        else:
+                            positions[sym] = None
+        except Exception:
+            pass
+        size_map = {"BTC": "0.001", "ETH": "0.01"}
+        for s in signals:
+            sym = s["symbol"]
+            sz = size_map.get(sym, "0.001")
+            signal_type = s.get("type", "")
+            detail = s.get("detail", "")
+            c = context.get(sym.lower(), {})
+            rsi = c.get("rsi", 50)
+            change24h = c.get("change24h", 0)
+            oversold, overbought = (35, 65) if sym == "BTC" else (30, 70)
+            action, reason = None, ""
+            if rsi is not None and rsi <= oversold and positions.get(sym) != "long":
+                action, reason = "open_long", f"RSI {rsi} 超卖区"
+            elif rsi is not None and rsi >= overbought and positions.get(sym) != "short":
+                action, reason = "open_short", f"RSI {rsi} 超买区"
+            elif "trend" in signal_type:
+                if "上行" in detail and rsi < 50 and positions.get(sym) != "long":
+                    action, reason = "open_long", f"RSI趋势上行 {detail}"
+                elif "下行" in detail and rsi > 50 and positions.get(sym) != "short":
+                    action, reason = "open_short", f"RSI趋势下行 {detail}"
+            elif "big_move" in signal_type or "anomaly" in signal_type:
+                if change24h and change24h < -0.05 and positions.get(sym) != "long":
+                    action, reason = "open_long", f"24h跌幅 {change24h*100:.1f}% 均值回归"
+                elif change24h and change24h > 0.05 and positions.get(sym) != "short":
+                    action, reason = "open_short", f"24h涨幅 {change24h*100:.1f}% 均值回归"
+            # 5. 平仓：持仓方向与信号相反 → 平仓
+            if action is None and positions.get(sym):
+                if positions[sym] == "long" and "下行" in detail:
+                    action, reason = "close_long", f"趋势转空平多 {detail}"
+                elif positions[sym] == "short" and "上行" in detail:
+                    action, reason = "close_short", f"趋势转多平空 {detail}"
+            # 6. 兜底：有信号且没持仓 → 按方向开单
+            if action is None and not positions.get(sym):
+                if "下行" in detail:
+                    action, reason = "open_short", f"信号触发开空 {detail}"
+                elif "上行" in detail:
+                    action, reason = "open_long", f"信号触发开多 {detail}"
+                elif "超买" in detail or "overbought" in signal_type:
+                    action, reason = "open_short", f"超买信号 {detail}"
+                elif "超卖" in detail or "oversold" in signal_type:
+                    action, reason = "open_long", f"超卖信号 {detail}"
+            if action is None:
+                continue
+            cmd = {"action": action, "symbol": sym, "size": sz, "reason": reason}
+            exec_script = os.path.join(os.path.dirname(__file__), "demo_execute.py")
+            log.info(f"Auto trade: {json.dumps(cmd, ensure_ascii=False)}")
+            try:
+                exec_result = subprocess.run(
+                    [sys.executable or "python3", exec_script, json.dumps(cmd)],
+                    capture_output=True, text=True, timeout=20,
+                )
+                if exec_result.returncode == 0:
+                    result = json.loads(exec_result.stdout)
+                    log.info(f"Auto trade OK: {result.get('order_id','')} @ {result.get('price','')}")
+                    return result
+                else:
+                    log.warning(f"Auto trade failed: {exec_result.stderr[:200]}")
+                    return {"action": action, "symbol": sym, "size": sz, "reason": reason,
+                            "success": False, "error": exec_result.stderr[:200]}
+            except Exception as e:
+                log.warning(f"Auto trade exception: {e}")
+                return None
+        return None
+
     def _dispatch_via_hermes(self, signals: list, context: dict, hist_context: dict):
         """检测到信号后，直接调 hermes CLI 让 Agent 分析并推送给用户"""
         import subprocess
@@ -860,80 +946,8 @@ class WSManager:
                     log.info(f"Signal REJECTED by evaluator — not sending to Telegram")
                     return
 
-                # 3. Trade decision — LLM 判断是否要模拟开/平仓
-                trade_result = None
-                try:
-                    ctx_lines = []
-                    for sym in ["btc", "eth"]:
-                        c = context.get(sym, {})
-                        if c:
-                            ctx_lines.append(
-                                f"{sym.upper()}: ${c.get('price','?')} "
-                                f"RSI{c.get('rsi','?')} "
-                                f"方向{c.get('direction','?')} "
-                                f"OI{c.get('open_interest','?')} "
-                                f"资金费率{c.get('funding_rate','?')}"
-                            )
-                    ctx_str = "\n".join(ctx_lines)
-
-                    pos_hint = "暂无记录持仓"
-                    for s in signals:
-                        if "close" in s.get("type", "").lower() or "反转" in s.get("detail", ""):
-                            pos_hint = f"信号提示可能需要平仓: {s['detail']}"
-
-                    trade_prompt = (
-                        "你是一个模拟盘交易员。当前有市场信号需要你决定是否执行模拟交易。\n\n"
-                        f"## 当前市场\n{ctx_str}\n\n"
-                        f"## 信号\n{' '.join(s.get('detail','') for s in signals)}\n\n"
-                        f"## 分析师判断\n{analysis[:500]}\n\n"
-                        f"## 持仓状态\n{pos_hint}\n\n"
-                        "## 你的任务\n"
-                        "基于信号强度和分析师判断，决定是否在模拟盘执行交易。\n"
-                        "模拟账户余额约 10,000 USDT，全仓。\n"
-                        "单笔最大: BTC 0.01, ETH 0.1。\n"
-                        "没有成熟策略，相信你自己的判断。\n\n"
-                        "## 输出格式（仅一行 JSON，不要其他文字）\n"
-                        '{"action":"open_long|open_short|close_long|close_short|skip",'
-                        '"symbol":"BTC|ETH","size":"数量",'
-                        '"reason":"简短理由"}\n'
-                        "- skip = 不交易\n"
-                        "- open_long = 开多\n"
-                        "- open_short = 开空\n"
-                        "- close_long = 平多\n"
-                        "- close_short = 平空\n"
-                    )
-
-                    trade_decision = subprocess.run(
-                        [hermes_bin, "-z", trade_prompt],
-                        capture_output=True, text=True, timeout=60,
-                        env={**os.environ, "HERMES_PROFILE": "jiaoyiyuan"},
-                    )
-
-                    if trade_decision.returncode == 0:
-                        raw = trade_decision.stdout.strip()
-                        try:
-                            trade_cmd = json.loads(raw)
-                            if trade_cmd.get("action") and trade_cmd["action"] != "skip":
-                                exec_script = os.path.join(
-                                    os.path.dirname(__file__), "demo_execute.py"
-                                )
-                                exec_result = subprocess.run(
-                                    [sys.executable or "python3", exec_script, json.dumps(trade_cmd)],
-                                    capture_output=True, text=True, timeout=20,
-                                )
-                                if exec_result.returncode == 0:
-                                    trade_result = json.loads(exec_result.stdout)
-                                    log.info(f"Trade executed: {json.dumps(trade_result, ensure_ascii=False)[:200]}")
-                                else:
-                                    log.warning(f"Trade exec failed: {exec_result.stderr[:200]}")
-                            else:
-                                log.info(f"Trade decision: skip ({trade_cmd.get('reason','')})")
-                        except (json.JSONDecodeError, TypeError) as e:
-                            log.warning(f"Trade decision parse failed: {e} raw: {raw[:200]}")
-                except subprocess.TimeoutExpired:
-                    log.warning("Trade decision timed out")
-                except FileNotFoundError:
-                    pass
+                # 3. Trade decision — 规则驱动自动交易（替代 LLM 决策）
+                trade_result = self._auto_trade(signals, context)
 
                 # 4. 推送到 Telegram（含交易结果）
                 label = f"[{verdict}] " if verdict == "REVISE" else ""
