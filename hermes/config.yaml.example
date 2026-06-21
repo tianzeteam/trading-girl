@@ -1,0 +1,52 @@
+# 交易媛 — Hermes Agent Profile Configuration Template
+# Copy to ~/.hermes/profiles/jiaoyiyuan/config.yaml
+
+# ── Profile ──
+name: jiaoyiyuan
+description: 交易媛 — Private Trading Companion
+
+# ── LLM ──
+model:
+  default: deepseek/deepseek-chat  # or other DeepSeek models
+  provider: deepseek
+
+# ── SOUL ──
+soul:
+  enabled: true
+  file: SOUL.md  # relative to profile directory
+
+# ── MCP Servers ──
+mcp_servers:
+  bitget:
+    command: npx
+    args:
+      - bitget-mcp-server
+      - --modules
+      - spot,futures,account
+    env:
+      BITGET_API_KEY: "${BITGET_API_KEY}"
+      BITGET_SECRET_KEY: "${BITGET_SECRET_KEY}"
+      BITGET_PASSPHRASE: "${BITGET_PASSPHRASE}"
+
+  bitget-paper:
+    command: npx
+    args:
+      - bitget-mcp-server
+      - --paper-trading
+      - --modules
+      - spot,futures,account
+    env:
+      BITGET_API_KEY: "${BITGET_PAPER_API_KEY}"
+      BITGET_SECRET_KEY: "${BITGET_PAPER_SECRET_KEY}"
+      BITGET_PASSPHRASE: "${BITGET_PAPER_PASSPHRASE}"
+
+# ── Telegram ──
+telegram:
+  enabled: true
+  bot_token_env: TELEGRAM_BOT_TOKEN
+  home_chat_id_env: TELEGRAM_CHAT_ID
+
+# ── Cron ──
+cron:
+  enabled: true
+  error_webhook: ""  # optional error reporting
