@@ -1,0 +1,10 @@
+# 交易媛 — Python dependencies
+# No external dependencies required.
+# All functionality uses Python standard library only:
+#   - hmac, hashlib, base64 (API signing)
+#   - json, urllib (HTTP/WS communication)
+#   - threading, logging, signal, os, sys (daemon infrastructure)
+#   - datetime, time (timestamps, delays)
+#
+# To install a WebSocket client (recommended for production):
+# websocket-client>=1.6.0

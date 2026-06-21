@@ -1,0 +1,22 @@
+# Environment
+.env
+*.tmp.*
+
+# Logs
+*.log
+ws-health.json
+
+# Runtime
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
