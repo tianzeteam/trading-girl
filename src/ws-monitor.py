@@ -763,25 +763,8 @@ class WSManager:
     def _auto_trade(self, signals: list, context: dict) -> dict | None:
         """规则驱动自动交易——信号匹配就执行，不依赖 LLM"""
         import subprocess, json, os
-        positions = {}
-        log_path = CONFIG.get("trade_log", os.path.join(os.path.dirname(CONFIG["signal_file"]), "trade-log.json"))
-        try:
-            if os.path.exists(log_path):
-                with open(log_path) as f:
-                    log_data = json.load(f)
-                for sym in ["BTC", "ETH"]:
-                    entries = [e for e in log_data if e.get("symbol") == sym and e.get("success")]
-                    if entries:
-                        last = entries[-1]
-                        act = last.get("action", "")
-                        if "open_long" in act:
-                            positions[sym] = "long"
-                        elif "open_short" in act:
-                            positions[sym] = "short"
-                        else:
-                            positions[sym] = None
-        except Exception:
-            pass
+        # 查交易所真实持仓（不依赖 trade-log.json）
+        positions = self._fetch_positions()
         size_map = {"BTC": "0.001", "ETH": "0.01"}
         for s in signals:
             sym = s["symbol"]
@@ -845,6 +828,62 @@ class WSManager:
                 log.warning(f"Auto trade exception: {e}")
                 return None
         return None
+
+    def _fetch_positions(self) -> dict:
+        """查 Demo API 真实持仓，返回 {symbol: 'long'|'short'|None}"""
+        import hmac, hashlib, base64, json, os, time, urllib.request
+        api_key = os.environ.get('BITGET_PAPER_API_KEY', '')
+        secret = os.environ.get('BITGET_PAPER_SECRET_KEY', '')
+        phrase = os.environ.get('BITGET_PAPER_PASSPHRASE', '')
+        if not all([api_key, secret, phrase]):
+            try:
+                env_path = os.path.abspath(os.path.join(os.path.dirname(CONFIG["signal_file"]), ".env"))
+                with open(env_path) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#') or '=' not in line: continue
+                        k, v = line.split('=', 1)
+                        if k.strip() == 'BITGET_PAPER_API_KEY' and not api_key:
+                            api_key = v.strip()
+                        elif k.strip() == 'BITGET_PAPER_SECRET_KEY' and not secret:
+                            secret = v.strip()
+                        elif k.strip() == 'BITGET_PAPER_PASSPHRASE' and not phrase:
+                            phrase = v.strip()
+            except Exception:
+                pass
+        if not all([api_key, secret, phrase]):
+            return {}
+        def _sign(method, path, qs, body, ts):
+            msg = ts + method + path + ('?' + qs if qs else '') + (json.dumps(body) if body else '')
+            mac = hmac.new(secret.encode(), msg.encode(), hashlib.sha256)
+            return base64.b64encode(mac.digest()).decode()
+        ts = str(int(time.time() * 1000))
+        path = '/api/v2/mix/position/allPosition'
+        qs = 'productType=USDT-FUTURES'
+        sig = _sign('GET', path, qs, None, ts)
+        try:
+            req = urllib.request.Request(
+                f'https://api.bitget.com{path}?{qs}',
+                headers={'ACCESS-KEY': api_key, 'ACCESS-SIGN': sig,
+                         'ACCESS-TIMESTAMP': ts, 'ACCESS-PASSPHRASE': phrase,
+                         'Content-Type': 'application/json', 'paptrading': '1'},
+                method='GET',
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+            if data.get('code') == '00000':
+                positions = {}
+                for pos in data.get('data', []):
+                    sym = pos.get('symbol', '')
+                    hold = pos.get('holdSide', '')
+                    total = float(pos.get('total', '0'))
+                    if total > 0:
+                        key = 'BTC' if 'BTC' in sym else 'ETH' if 'ETH' in sym else sym
+                        positions[key] = hold
+                return positions
+            return {}
+        except Exception:
+            return {}
 
     def _dispatch_via_hermes(self, signals: list, context: dict, hist_context: dict):
         """检测到信号后，直接调 hermes CLI 让 Agent 分析并推送给用户"""

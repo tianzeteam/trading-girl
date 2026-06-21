@@ -111,5 +111,52 @@
     "balance_after": {
       "USDT": "9999.58775868"
     }
+  },
+  {
+    "action": "close_long",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "趋势转空平多 RSI 连续3次下行",
+    "success": false,
+    "order_id": "",
+    "price": "",
+    "error": "{\"code\":\"22002\",\"msg\":\"No position to close\",\"requestTime\":1782042006053,\"data\":null}",
+    "ts": "2026-06-21T11:40:05Z",
+    "balance_before": {
+      "USDT": "9999.58775868"
+    }
+  },
+  {
+    "action": "close_long",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "趋势转空平多 RSI 连续3次下行",
+    "success": false,
+    "order_id": "",
+    "price": "",
+    "error": "{\"code\":\"22002\",\"msg\":\"No position to close\",\"requestTime\":1782045725020,\"data\":null}",
+    "ts": "2026-06-21T12:42:04Z",
+    "balance_before": {
+      "USDT": "9999.58775868"
+    }
+  },
+  {
+    "action": "open_short",
+    "symbol": "ETH",
+    "size": "0.01",
+    "reason": "信号触发开空 RSI 连续3次下行",
+    "success": true,
+    "order_id": "1452574776911626241",
+    "price": "1808.65",
+    "error": "",
+    "ts": "2026-06-21T12:58:54Z",
+    "balance_before": {
+      "USDT": "9999.58775868"
+    },
+    "client_oid": "1452574776940986368",
+    "fee": "-0.0108519",
+    "balance_after": {
+      "USDT": "9999.57690678"
+    }
   }
 ]
