@@ -766,6 +766,75 @@ class WSManager:
         # 查交易所真实持仓（不依赖 trade-log.json）
         positions = self._fetch_positions()
         size_map = {"BTC": "0.001", "ETH": "0.01"}
+
+        # ── Phase 0: 持仓管理 — 止盈 / RSI回归 / 超时平仓 ──
+        entry_prices = {}
+        try:
+            log_path = os.path.join(os.path.dirname(CONFIG["signal_file"]), "trade-log.json")
+            if os.path.exists(log_path):
+                with open(log_path) as f:
+                    for e in json.load(f):
+                        sym_e = e.get("symbol", "")
+                        act = e.get("action", "")
+                        if e.get("success") and ("open_long" in act or "open_short" in act):
+                            entry_prices[sym_e] = {"action": act, "price": float(e.get("price", 0) or 0), "ts": e.get("ts", "")}
+        except Exception:
+            pass
+
+        close_side = {"open_long": "close_long", "open_short": "close_short"}
+        cur_ts = time.time()
+        for sym, side in list(positions.items()):
+            ep = entry_prices.get(sym)
+            if not ep or ep["price"] == 0:
+                continue
+            cur_price = context.get(sym.lower(), {}).get("price")
+            if not cur_price:
+                continue
+            entry_p = ep["price"]
+            pnl_pct = (cur_price - entry_p) / entry_p if "open_short" in ep["action"] else (entry_p - cur_price) / entry_p
+            rsi = context.get(sym.lower(), {}).get("rsi", 50)
+            # 计算持仓时长
+            hold_hours = 0
+            try:
+                hold_hours = (cur_ts - datetime.strptime(ep["ts"][:19], "%Y-%m-%dT%H:%M:%S").timestamp()) / 3600
+            except Exception:
+                pass
+            close_reason = None
+            # a) 止盈
+            if pnl_pct >= 0.01:
+                close_reason = f"止盈 {pnl_pct*100:.1f}%"
+            # b) 止损
+            elif pnl_pct <= -0.03:
+                close_reason = f"止损 {pnl_pct*100:.1f}%"
+            # c) RSI 回归中性
+            elif side == "long" and rsi and rsi >= 55:
+                close_reason = f"RSI {rsi} 回归中性"
+            elif side == "short" and rsi and rsi <= 45:
+                close_reason = f"RSI {rsi} 回归中性"
+            # d) 持仓超时
+            elif hold_hours >= 12:
+                close_reason = f"持仓超时 {hold_hours:.0f}h"
+            if close_reason:
+                act_close = close_side.get(ep["action"], "")
+                if act_close:
+                    cmd = {"action": act_close, "symbol": sym, "size": size_map.get(sym, "0.001"), "reason": close_reason}
+                    exec_script = os.path.join(os.path.dirname(__file__), "demo_execute.py")
+                    log.info(f"Auto close: {json.dumps(cmd, ensure_ascii=False)}")
+                    try:
+                        exec_result = subprocess.run(
+                            [sys.executable or "python3", exec_script, json.dumps(cmd)],
+                            capture_output=True, text=True, timeout=20,
+                        )
+                        if exec_result.returncode == 0:
+                            result = json.loads(exec_result.stdout)
+                            log.info(f"Auto close OK: {result.get('price','')} | PnL {pnl_pct*100:.1f}%")
+                            return result
+                        else:
+                            log.warning(f"Auto close failed: {exec_result.stdout[:200]}")
+                    except Exception as e:
+                        log.warning(f"Auto close exception: {e}")
+
+        # ── Phase 1: 信号驱动开/平 ──
         for s in signals:
             sym = s["symbol"]
             sz = size_map.get(sym, "0.001")

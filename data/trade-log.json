@@ -195,5 +195,43 @@
     "balance_after": {
       "USDT": "10000.37430241"
     }
+  },
+  {
+    "action": "open_short",
+    "symbol": "BTC",
+    "size": "0.001",
+    "reason": "信号触发开空 RSI 连续3次下行",
+    "success": true,
+    "order_id": "1452741593743392769",
+    "price": "63348.6",
+    "error": "",
+    "ts": "2026-06-22T00:01:46Z",
+    "balance_before": {
+      "USDT": "10001.25904122"
+    },
+    "client_oid": "1452741593772752896",
+    "fee": "-0.03800916",
+    "balance_after": {
+      "USDT": "10001.22103206"
+    }
+  },
+  {
+    "action": "open_short",
+    "symbol": "BTC",
+    "size": "0.001",
+    "reason": "信号触发开空 RSI 连续3次下行",
+    "success": true,
+    "order_id": "1452757056409993217",
+    "price": "63991.3",
+    "error": "",
+    "ts": "2026-06-22T01:03:13Z",
+    "balance_before": {
+      "USDT": "10001.22103206"
+    },
+    "client_oid": "1452757056439353344",
+    "fee": "-0.03839478",
+    "balance_after": {
+      "USDT": "10001.18263728"
+    }
   }
 ]
